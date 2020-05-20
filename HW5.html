@@ -144,7 +144,7 @@
 			}
 
 			class Agent {
-			constructor(pos, mesh,target) {
+			constructor(pos, mesh,target,sign) {
 				this.pos = pos.clone();
 				this.vel = new THREE.Vector3();
 				this.force = new THREE.Vector3();
@@ -154,6 +154,8 @@
 				this.MAXSPEED = ((Math.random()*60)+50)/parameter;
 				this.ARRIVAL_R = 30/parameter;
 				this.targetad = target;
+				this.carsize = 10/parameter;
+				this.num = sign;
 				//this.nbhd = [];
 				
 				// for orientable agent
@@ -193,6 +195,31 @@
 
 			this.vel.add(this.force.clone().multiplyScalar(dt));
 
+
+			for(var k =0; k<Agents.length ;k++){
+					if(this.num==k) continue;
+					else{
+						if(this.pos.distanceTo(Agents[k].pos)<10/parameter){
+							let point =Agents[k].pos.clone().sub (this.pos) // c-p
+							let vhat = this.vel.clone().normalize();
+							let proj  = point.dot(vhat);
+							const REACH = 20/parameter;
+							const K = 10;
+							if (proj > 0 && proj < REACH) {
+							let perp = new THREE.Vector3();
+							perp.subVectors (point, vhat.clone().setLength(proj));
+							let overlap = Agents[k].num + this.size - perp.length()
+							if (overlap > 0) {
+								perp.setLength (K*overlap);
+								perp.negate();
+								this.force.add (perp);
+								//console.log ("hit:", perp);
+							}
+						}
+						this.vel.add(this.force.clone().multiplyScalar(dt));
+						}
+					}
+			}
 			// velocity modulation
 			let diff = this.target.clone().sub(this.pos)
 			let dst = diff.length();
@@ -218,7 +245,9 @@
 				this.angle = Math.atan2 (-this.vel.z, this.vel.x)
 				this.mesh.rotation.y = this.angle
 			}
+
 			}
+			
 
 			setTarget(target) {
 				this.target.copy(target);
@@ -308,10 +337,10 @@
 				
 				
 			var mesh = agentMesh ();
-			Agents.push(new Agent(new THREE.Vector3((-100 + 200 * Math.random())/parameter, 0, (-100 + 200 * Math.random())/parameter), mesh,target));
+			Agents.push(new Agent(new THREE.Vector3((-100 + 200 * Math.random())/parameter, 0, (-100 + 200 * Math.random())/parameter), mesh,target,0));
 			
 			var mesh = agentMesh ();
-			Agents.push(new Agent(new THREE.Vector3((-100 + 200 * Math.random())/parameter, 0, (-100 + 200 * Math.random())/parameter), mesh,target));
+			Agents.push(new Agent(new THREE.Vector3((-100 + 200 * Math.random())/parameter, 0, (-100 + 200 * Math.random())/parameter), mesh,target,1));
 			
 			//    pdControl = new PDControllerR2();
 				var number = 0;
