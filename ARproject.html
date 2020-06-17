@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+<!-- three.js library -->
+<script src='./vendor/three.js/build/three.min.js'></script>
+<script src="./vendor/three.js/examples/js/libs/stats.min.js"></script>
+<script src="https://rawgit.com/jyunming-chen/tutsplus/master/js/text2D.js"></script>
+<!-- ar.js -->
+<script src="./build/ar.js"></script>
+<script>THREEx.ArToolkitContext.baseURL = '.'</script>
+
+<body style='margin : 0px; overflow: hidden; font-family: Monospace;'><div style='position: absolute; top: 10px; width:100%; text-align: center; z-index: 1;'>
+	 AR project
+	<br/>
+	init-animate format<br>
+	HW6
+</div><script>
+var renderer, scene, camera, stats,picture,me;
+var arToolkitSource, arToolkitContext;
+var smoothedControls, markerRoot, smoothedRoot;
+var sprite;
+var _iOSDevice;
+
+init();
+animate();
+
+function onResize(){
+	arToolkitSource.onResize()	
+	arToolkitSource.copySizeTo(renderer.domElement)	
+	if( arToolkitContext.arController !== null ){
+		arToolkitSource.copySizeTo(arToolkitContext.arController.canvas)	
+	}	
+}
+
+function init() {
+	// https://stackoverflow.com/questions/9038625/detect-if-device-is-ios?utm_medium=organic&utm_source=google_rich_qa&utm_campaign=google_rich_qa
+	let _iOSDevice = !!navigator.platform.match(/iPhone|iPod|iPad/);
+
+	console.log ('iOS: ' + _iOSDevice)
+
+	renderer	= new THREE.WebGLRenderer({
+		// antialias	: true,
+		alpha: true
+	});
+	renderer.setClearColor(new THREE.Color('lightgrey'), 0)
+	// renderer.setPixelRatio( 1/2 );
+	renderer.setSize( window.innerWidth, window.innerHeight );
+	renderer.domElement.style.position = 'absolute'
+	renderer.domElement.style.top = '0px'
+	renderer.domElement.style.left = '0px'
+	document.body.appendChild( renderer.domElement );
+
+	// init scene and camera
+	scene	= new THREE.Scene();
+	
+	//////////////////////////////////////////////////////////////////////////////////
+	//		Initialize a basic camera
+
+	// Create a camera
+	camera = new THREE.Camera();
+	scene.add(camera);
+
+	////////////////////////////////////////////////////////////////////////////////
+	//          handle arToolkitSource
+
+	arToolkitSource = new THREEx.ArToolkitSource({
+		// to read from the webcam 
+		sourceType : 'webcam',
+
+	})
+
+	arToolkitSource.init(function onReady(){
+		onResize()
+	})
+	
+	// handle resize
+	window.addEventListener('resize', function(){
+		onResize()
+	})
+	////////////////////////////////////////////////////////////////////////////////
+	//          initialize arToolkitContext
+	
+
+	// create atToolkitContext
+	arToolkitContext = new THREEx.ArToolkitContext({
+		cameraParametersUrl: THREEx.ArToolkitContext.baseURL + '/data/camera_para.dat',
+		detectionMode: 'mono',
+		maxDetectionRate: 30,
+		canvasWidth: 80*3,
+		canvasHeight: 60*3,
+	})
+	// initialize it
+	arToolkitContext.init(function onCompleted(){
+		// copy projection matrix to camera
+		camera.projectionMatrix.copy( arToolkitContext.getProjectionMatrix() );
+	})
+	
+	////////////////////////////////////////////////////////////////////////////////
+	//          Create a ArMarkerControls
+	
+	markerRoot = new THREE.Group
+	scene.add(markerRoot)
+	var artoolkitMarker = new THREEx.ArMarkerControls(arToolkitContext, markerRoot, {
+		type : 'pattern',
+		patternUrl : THREEx.ArToolkitContext.baseURL + '/data/pattern-tatung.hiro'
+	})
+
+	//////////////////////////////////////////////////////////////////////////////////
+	//		add an object in the scene
+
+	let arWorldRoot = markerRoot;
+	let loader = new THREE.TextureLoader();
+	loader.setCrossOrigin('');
+	// add plane	
+	picture = new THREE.Mesh(new THREE.PlaneGeometry(2,2),new THREE.MeshBasicMaterial({map:loader.load('white-removebg-preview.png')}));
+	picture.position.set(0,1,-1);
+	arWorldRoot.add( picture );
+
+
+	me = new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({transparent: true,map:loader.load('me2remove.png')}));
+	me.position.set(0.5,0.5,-0.9);
+	arWorldRoot.add( me );
+
+
+	baby = new THREE.Mesh(new THREE.PlaneGeometry(0.5,0.5),new THREE.MeshBasicMaterial({transparent: true,map:loader.load('babyremove.png')}));
+    baby.position.set(-0.5,0.5,-0.9);
+	arWorldRoot.add( baby );
+
+	floor = new THREE.Mesh(new THREE.PlaneGeometry(2,2),new THREE.MeshBasicMaterial(
+		{color: 0xFFFFFF,
+		 transparent: true,
+		 opacity: 0.5,
+		 visible: true}));
+	floor.rotation.x=- Math.PI/2;
+	floor.position.set(0,0,0);
+	arWorldRoot.add( floor );
+	/////////////////////////////////////////////
+	 // SpriteText
+  var SpriteText2D = THREE_Text.SpriteText2D;
+  var textAlign = THREE_Text.textAlign;
+
+  sprite = new SpriteText2D("TEST", {
+	align: textAlign.center,
+	font: '10px Courier',
+	fillStyle: '#FFFF00',
+	antialias: true
+  });
+//  sprite.position.set(0, 0, 0);
+  sprite.scale.set(.015, .015, .015);
+  scene.add(sprite);
+
+  stats = new Stats();
+  document.body.appendChild( stats.dom );
+
+}
+
+function animate() {
+
+	requestAnimationFrame (animate);
+	renderer.render (scene, camera);
+	stats.update();
+	
+	if( arToolkitSource.ready === false )	return
+
+	arToolkitContext.update( arToolkitSource.domElement )
+
+	
+	// using SpriteText
+	sprite.position.copy (markerRoot.position);
+	sprite.position.y += 2.5;
+	sprite.material.visible = markerRoot.visible;
+	sprite.text = '到此一遊'
+
+	//lookat me and plane
+	
+}
+	
+</script></body>
